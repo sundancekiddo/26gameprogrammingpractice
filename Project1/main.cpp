@@ -28,6 +28,13 @@ struct Vertex {
 	float r, g, b, a;
 };
 
+//game context
+typedef struct {
+	float posX, posY;
+	int isRunning;
+	char currentInput;
+} GameContext;
+
 // HLSL (High-Level Shading Language) 소스
 const char* shaderSource = R"(
 struct VS_INPUT { float3 pos : POSITION; float4 col : COLOR; };
@@ -119,6 +126,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// --- [5. 정석 게임 루프] ---
 	MSG msg = { 0 };
+	GameContext game = { 0.0f,0.0f,1,' ' };
 	while (WM_QUIT != msg.message) {
 		// (1) 입력 단계: PeekMessage는 메시지가 없어도 바로 리턴함 (Non-blocking)
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -128,6 +136,31 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		else {
 			// (2) 업데이트 단계: 여기서 캐릭터의 위치나 로직을 계산함
 			// (과제: GetAsyncKeyState 등을 써서 posX, posY를 변경하셈)
+
+			if (GetAsyncKeyState(VK_LEFT) & 0x8000) game.posX -= 0.005f;
+			if (GetAsyncKeyState(VK_RIGHT) & 0x8000) game.posX += 0.005f;
+			if (GetAsyncKeyState(VK_DOWN) & 0x8000) game.posY -= 0.005f;
+			if (GetAsyncKeyState(VK_UP) & 0x8000) game.posY += 0.005f;
+
+			if (pVBuffer) pVBuffer->Release();
+			Vertex updatedVertices[6];
+			for (int i = 0; i < 6; i++) {
+				updatedVertices[i] = vertices[i];
+				updatedVertices[i].x += game.posX;
+				updatedVertices[i].y += game.posY;
+			}
+			/*Vertex updatedVertices[] = {
+		{  0.0f+game.posX,  0.7f + game.posY, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f },
+		{  0.6f + game.posX, -0.3f + game.posY, 0.5f,  0.0f, 1.0f, 0.0f, 1.0f },
+		{ -0.6f + game.posX, -0.3f + game.posY, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f },
+		{  0.0f + game.posX, -0.7f + game.posY, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f },
+		{ -0.6f + game.posX,  0.3f + game.posY, 0.5f,  0.0f, 1.0f, 0.0f, 1.0f },
+		{ 0.6f + game.posX,  0.3f + game.posY, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f }
+			};*/
+
+			D3D11_BUFFER_DESC bd = { sizeof(vertices), D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0, 0 };
+			D3D11_SUBRESOURCE_DATA initData = { vertices, 0, 0 };
+			g_pd3dDevice->CreateBuffer(&bd, &initData, &pVBuffer);
 
 			// (3) 출력 단계: 변한 데이터를 바탕으로 화면에 그림
 			float clearColor[] = { 0.1f, 0.2f, 0.3f, 1.0f };
